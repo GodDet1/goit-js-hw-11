@@ -9,9 +9,27 @@
   </head>
   <body>
     <form class="search-form" id="search-form">
-      <input type="text" name="searchQuery" autocomplete="off" placeholder="Search images..." />
-      <button type="submit">Search</button>
+      <input
+        type="text"
+        name="searchQuery"
+        autocomplete="off"
+        placeholder="Search images..."
+        class="search-form__input"
+      />
+
+      <button type="submit" class="search-form__btn" id="search-form__btn-submit">
+        <svg width="20px" height="20px" class="search-form__icon">
+          <use href="./image/symbol-defs.svg#icon-search" width="20px" height="20px"></use>
+        </svg>
+      </button>
     </form>
+
+    <div class="gallery" id="gallery">
+      <!-- Карточки изображений -->
+    </div>
+
+    <div class="end-container"></div>
+
     <script src="./index.js"></script>
   </body>
 </html>
