@@ -3,7 +3,6 @@ import 'notiflix/dist/notiflix-3.2.5.min.css';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
 import axios from 'axios';
-import InfiniteScroll from 'infinite-scroll';
 
 export default class IMAGE_GALLERY {
   constructor() {
@@ -11,41 +10,18 @@ export default class IMAGE_GALLERY {
 
     this.imageGallery = document.querySelector('#gallery');
     this.endContainer = document.querySelector('.end-container');
-    this.html = document.querySelector('html');
+    this.nextBtn = document.querySelector('.next-btn');
 
     this.search = 'cat';
-    this.galleryPageNumber = 4;
+    this.galleryPageNumber = 1;
+    this.lastPage = 17;
 
     this.gallery = new SimpleLightbox('.gallery a');
     this.gallery.on('show.simplelightbox');
 
     this.form.addEventListener('submit', this.onSubmit.bind(this));
 
-    this.html.addEventListener('keydown', this.onKeydown.bind(this));
-
-    let infScroll = new InfiniteScroll(this.imageGallery, {
-      // options
-      path: () => {
-        this.galleryPageNumber += 1;
-        return this.url(this.search, this.galleryPageNumber);
-      },
-      history: false,
-      responseBody: 'json',
-    });
-
-    infScroll.on('load', body => {
-      this.render(body);
-    });
-  }
-
-  onKeydown(evt) {
-    if (evt.code === 'ArrowDown') {
-      this.scroll();
-    }
-
-    if (evt.code === 'ArrowUp') {
-      this.scroll(-1);
-    }
+    this.nextBtn.addEventListener('click', this.onClick.bind(this));
   }
 
   async onSubmit(evt) {
@@ -61,29 +37,46 @@ export default class IMAGE_GALLERY {
     this.search = searchQuery.value;
 
     const rendercards = await this.fetchImg(this.search, this.galleryPageNumber);
-    console.log(rendercards);
 
-    Notiflix.Notify.info(`Hooray! We found ${rendercards.totalHits} totalHits images.`);
+    this.zeroImages(rendercards);
+    this.thirtyImg(rendercards);
+    this.toThirtyImages(rendercards);
+
+    if (rendercards !== undefined && rendercards.hits.length !== 0) {
+      Notiflix.Notify.success(`Hooray! We found ${rendercards.totalHits} totalHits images.`);
+    }
   }
 
-  onClick() {
+  async onClick() {
     this.galleryPageNumber += 1;
 
-    this.fetchImg(this.search, this.galleryPageNumber);
-    setTimeout(scroll, 400);
+    if (this.galleryPageNumber === this.lastPage) {
+      this.endContainer.insertAdjacentHTML(
+        'beforeend',
+        "<h2 class='end'>We're sorry, but you've reached the end of search results",
+      );
+
+      const data = await this.fetchImg(this.search, this.galleryPageNumber);
+
+      this.nextBtn.classList.add('visually-hidden');
+    } else {
+      const data = await this.fetchImg(this.search, this.galleryPageNumber);
+      this.thirtyImg(data);
+      this.toThirtyImages(data);
+    }
   }
 
   async fetchImg() {
     try {
-      const urlToFetch = this.url(this.search, this.galleryPageNumber);
+      const urlToFetch = this.url();
       const { data } = await axios.get(urlToFetch);
 
-      const images = data;
+      this.render(data);
+      this.gallery.refresh();
 
-      this.render(images);
-      return images;
-    } catch (error) {
-      console.log(error.message);
+      return data;
+    } catch {
+      return undefined;
     }
   }
 
@@ -120,9 +113,6 @@ export default class IMAGE_GALLERY {
 
     this.imageGallery.insertAdjacentHTML('beforeend', cardTemplate);
     this.gallery.refresh();
-
-    this.toTenImages(data);
-    this.zeroImages(data);
   }
 
   url(searchQuery = this.search, numberOfPage = this.galleryPageNumber) {
@@ -137,31 +127,27 @@ export default class IMAGE_GALLERY {
       .join('');
   }
 
-  scroll(num = 1) {
-    if (this.imageGallery.firstElementChild) {
-      const { height: cardHeight } = this.imageGallery.firstElementChild.getBoundingClientRect();
-      console.log(this.imageGallery.firstElementChild);
-
-      window.scrollBy({
-        top: cardHeight * 2 * num,
-        behavior: 'smooth',
-      });
-    }
-  }
-
   zeroImages(images) {
     if (images.hits.length === 0) {
-      throw new Error(Notiflix.Notify.failure('No image with this name!'));
+      this.nextBtn.classList.add('visually-hidden');
+      Notiflix.Notify.failure('No image with this name!');
     }
   }
 
-  toTenImages(images) {
-    if (images.hits.length < 30) {
+  toThirtyImages(images) {
+    if (images.hits.length < 30 && images.hits.length > 0) {
+      this.nextBtn.classList.add('visually-hidden');
       this.endContainer.insertAdjacentHTML(
         'beforeend',
         "<h2 class='end'>We're sorry, but you've reached the end of search results",
       );
-      Notiflix.Notify.info("We're sorry, but you've reached the end of search results");
+      Notiflix.Notify.warning("We're sorry, but you've reached the end of search results");
+    }
+  }
+
+  thirtyImg(images) {
+    if (images.hits.length === 30) {
+      this.nextBtn.classList.remove('visually-hidden');
     }
   }
 }
